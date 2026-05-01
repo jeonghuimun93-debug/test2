@@ -1,0 +1,21 @@
+UV REFERENCE (for LLM context)
+
+이 파일은 AI 에이전트가 uv (Python 패키지 매니저) 설정을 이해하기 위한 참조 문서입니다.
+
+## uv란
+uv는 Rust로 작성된 초고속 Python 패키지 및 프로젝트 매니저입니다.
+pip, pip-tools, virtualenv를 대체합니다.
+
+## 주요 명령어
+- uv init: 새 프로젝트 초기화
+- uv add <package>: 패키지 추가
+- uv remove <package>: 패키지 제거
+- uv run <script>: 가상환경에서 스크립트 실행
+- uv sync: 의존성 동기화
+
+## 설정 파일
+- pyproject.toml: 프로젝트 설정 및 의존성
+- uv.lock: 잠금 파일 (커밋 필요)
+
+## 이 프로젝트의 Python 버전
+TODO: 사용 중인 Python 버전

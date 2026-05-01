@@ -1,0 +1,23 @@
+NIXPACKS REFERENCE (for LLM context)
+
+이 파일은 AI 에이전트가 Nixpacks 배포 설정을 이해하기 위한 참조 문서입니다.
+
+## Nixpacks란
+Nixpacks는 소스 코드를 자동으로 분석하여 Docker 이미지를 빌드하는 도구입니다.
+Railway 등의 플랫폼에서 기본으로 사용됩니다.
+
+## 설정 파일 위치
+- nixpacks.toml (프로젝트 루트)
+
+## 기본 설정 예시
+[phases.setup]
+nixPkgs = ["nodejs", "python3"]
+
+[phases.build]
+cmds = ["npm install", "npm run build"]
+
+[start]
+cmd = "npm start"
+
+## 이 프로젝트의 설정
+TODO: 실제 사용 중인 nixpacks 설정 기록
