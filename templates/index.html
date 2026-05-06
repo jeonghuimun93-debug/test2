@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TCG 분류 시스템 | 삼성전자 R&D센터 부속의원</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+:root {
+  --blue:  #1428A0;
+  --blue2: #2563EB;
+  --bg:    #F0F2F8;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; min-height: 100vh; }
+
+/* ── Navbar ── */
+.top-bar {
+  background: var(--blue);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.logo-badge {
+  background: white;
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+.top-title {
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* ── Steps ── */
+.steps-bar {
+  background: white;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.step-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+.step-pill.active { color: var(--blue); }
+.step-pill.done   { color: #16A34A; }
+.step-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; color: #6B7280;
+  flex-shrink: 0;
+}
+.step-pill.active .step-dot { background: var(--blue); color: white; }
+.step-pill.done   .step-dot { background: #16A34A; color: white; }
+.step-line { flex: 0 0 40px; height: 2px; background: #E5E7EB; border-radius: 1px; }
+.step-line.done { background: #16A34A; }
+
+/* ── Upload ── */
+.upload-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 48px 40px;
+  text-align: center;
+  max-width: 520px;
+  margin: 60px auto 0;
+}
+.drop-zone {
+  border: 2.5px dashed #93C5FD;
+  border-radius: 12px;
+  padding: 36px 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #F8FAFF;
+}
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--blue);
+  background: #EFF2FF;
+}
+.drop-icon { font-size: 3rem; color: var(--blue); }
+
+/* ── Stats Cards ── */
+.stat-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.stat-num  { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.stat-lbl  { font-size: 0.73rem; font-weight: 700; letter-spacing: 0.2px; opacity: 0.82; margin-top: 2px; }
+
+/* ── Table Card ── */
+.table-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.tcg-th { font-size: 0.75rem; font-weight: 700; color: #6B7280; border-bottom: 2px solid #F3F4F6 !important; white-space: nowrap; }
+.tcg-td { font-size: 0.83rem; vertical-align: middle; border-bottom: 1px solid #F9FAFB !important; }
+tbody tr:hover td { background: #F8FAFF; }
+
+/* ── Badges ── */
+.gb { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.gb-1 { background: #FEE2E2; color: #B91C1C; }
+.gb-2 { background: #FEF3C7; color: #B45309; }
+.gb-3 { background: #DCFCE7; color: #15803D; }
+.gb-4 { background: #EDE9FE; color: #6D28D9; }
+
+/* ── Filter buttons ── */
+.fbtn {
+  font-size: 0.78rem; font-weight: 600;
+  border-radius: 20px; padding: 4px 14px;
+  border: 2px solid; background: transparent;
+  transition: all 0.15s; cursor: pointer;
+}
+.fbtn:hover { opacity: 0.8; }
+
+/* ── Send panel ── */
+.panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 24px;
+}
+.sri {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #F3F4F6;
+  font-size: 0.83rem;
+}
+.sri:last-child { border-bottom: none; }
+
+/* ── Email Modal ── */
+.email-pre {
+  background: #F8F9FA;
+  border-radius: 8px;
+  padding: 18px 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.79rem;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.65;
+  border: 1px solid #E5E7EB;
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="d-flex align-items-center gap-3">
+    <span class="logo-badge">SAMSUNG</span>
+    <span class="top-title">R&D센터 부속의원 &nbsp;|&nbsp; TCG 자동 분류 및 메일 발송 시스템</span>
+  </div>
+</div>
+
+<!-- Steps -->
+<div class="steps-bar" id="stepsBar">
+  <div class="step-pill active" id="sp1"><div class="step-dot">1</div>파일 업로드</div>
+  <div class="step-line" id="sl1"></div>
+  <div class="step-pill" id="sp2"><div class="step-dot">2</div>TCG 분류 결과</div>
+  <div class="step-line" id="sl2"></div>
+  <div class="step-pill" id="sp3"><div class="step-dot">3</div>메일 발송</div>
+</div>
+
+<!-- ════ SECTION 1: Upload ════ -->
+<div id="sec-upload" class="container px-3">
+  <div class="upload-card">
+    <h5 class="fw-bold mb-1" style="color:var(--blue)">건강검진 데이터 업로드</h5>
+    <p class="text-muted small mb-4">Excel 파일(.xlsx)을 업로드하면 TCG 대상자를 자동으로 분류합니다</p>
+
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('fi').click()"
+         ondragover="ev(event,'over')" ondragleave="ev(event,'leave')" ondrop="ev(event,'drop')">
+      <div class="drop-icon mb-2"><i class="bi bi-file-earmark-spreadsheet-fill"></i></div>
+      <div class="fw-semibold mb-1" style="font-size:0.9rem">파일을 드래그하거나 클릭하여 선택</div>
+      <div class="text-muted" style="font-size:0.78rem">지원: .xlsx · 약 850~1,000명 데이터</div>
+      <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="picked(this)">
+    </div>
+
+    <!-- File ready -->
+    <div id="fileReady" class="d-none mt-3 p-3 rounded-3" style="background:#F0FDF4;border:1.5px solid #86EFAC">
+      <div class="d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+          <div class="text-start">
+            <div class="fw-bold small" id="fName">-</div>
+            <div class="text-muted" style="font-size:0.73rem" id="fSize">-</div>
+          </div>
+        </div>
+        <button class="btn btn-sm fw-bold px-4 py-2 flex-shrink-0"
+                style="background:var(--blue);color:white;border-radius:8px;font-size:0.83rem"
+                onclick="doClassify()">
+          <i class="bi bi-search me-1"></i>TCG 분류 시작
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="d-none mt-4">
+      <div class="spinner-border mb-2" style="color:var(--blue)" role="status"></div>
+      <div class="text-muted small">데이터 분석 중...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SECTION 2: Results ════ -->
+<div id="sec-results" class="d-none container-fluid px-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold mb-0" style="color:var(--blue);font-size:1rem">TCG 분류 결과</h6>
+      <small class="text-muted" id="resultSub"></small>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" onclick="goStep(1)">
+        <i class="bi bi-arrow-left me-1"></i>다시 업로드
+      </button>
+      <button class="btn btn-sm fw-bold px-3" style="background:var(--blue);color:white;border-radius:6px" onclick="goStep(3)">
+        <i class="bi bi-send-fill me-1"></i>메일 발송하기
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:white">
+        <div class="stat-num text-dark" id="s-total">-</div>
+        <div class="stat-lbl text-muted">전체 인원</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:var(--blue)">
+        <div class="stat-num text-white" id="s-tcg">-</div>
+        <div class="stat-lbl text-white">TCG 총계</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:#FEE2E2">
+        <div class="stat-num" style="color:#B91C1C" id="s-g1">-</div>
+        <div class="stat-lbl" style="color:#B91C1C">① 뇌심최고위험군</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:#FEF9C3">
+        <div class="stat-num" style="color:#B45309" id="s-g2">-</div>
+        <div class="stat-lbl" style="color:#B45309">② 중증고혈압</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:#DCFCE7">
+        <div class="stat-num" style="color:#15803D" id="s-g3">-</div>
+        <div class="stat-lbl" style="color:#15803D">③ 중증비만</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card p-3" style="background:#EDE9FE">
+        <div class="stat-num" style="color:#6D28D9" id="s-g4">-</div>
+        <div class="stat-lbl" style="color:#6D28D9">④ 복합유소견</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="d-flex align-items-center gap-2 p-3 flex-wrap border-bottom">
+      <span class="fw-bold text-muted me-1" style="font-size:0.8rem">필터</span>
+      <button class="fbtn" id="fb-all"  style="border-color:var(--blue);color:var(--blue)"      onclick="doFilter('all',this)">전체</button>
+      <button class="fbtn" id="fb-g1"   style="border-color:#B91C1C;color:#B91C1C"              onclick="doFilter('뇌심최고위험군',this)">① 뇌심최고위험군</button>
+      <button class="fbtn" id="fb-g2"   style="border-color:#B45309;color:#B45309"              onclick="doFilter('중증고혈압',this)">② 중증고혈압</button>
+      <button class="fbtn" id="fb-g3"   style="border-color:#15803D;color:#15803D"              onclick="doFilter('중증비만',this)">③ 중증비만</button>
+      <button class="fbtn" id="fb-g4"   style="border-color:#6D28D9;color:#6D28D9"              onclick="doFilter('복합유소견',this)">④ 복합유소견</button>
+      <span class="ms-auto text-muted" style="font-size:0.78rem" id="filterCount"></span>
+    </div>
+    <div class="table-responsive" style="max-height:460px;overflow-y:auto">
+      <table class="table mb-0">
+        <thead style="position:sticky;top:0;background:white;z-index:1">
+          <tr>
+            <th class="tcg-th ps-3">#</th>
+            <th class="tcg-th">성명</th>
+            <th class="tcg-th">부서</th>
+            <th class="tcg-th">이메일</th>
+            <th class="tcg-th">TCG 기준</th>
+            <th class="tcg-th">혈압</th>
+            <th class="tcg-th">공복혈당</th>
+            <th class="tcg-th">BMI</th>
+            <th class="tcg-th">판정</th>
+            <th class="tcg-th pe-3">미리보기</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SECTION 3: Send ════ -->
+<div id="sec-send" class="d-none container-fluid px-4 py-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h6 class="fw-bold mb-0" style="color:var(--blue);font-size:1rem">메일 발송</h6>
+      <small class="text-muted" id="sendSub"></small>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="goStep(2)">
+      <i class="bi bi-arrow-left me-1"></i>결과로 돌아가기
+    </button>
+  </div>
+
+  <div class="row g-3">
+    <!-- SMTP -->
+    <div class="col-lg-4 col-xl-3">
+      <div class="panel">
+        <div class="fw-bold mb-3 d-flex align-items-center gap-2" style="font-size:0.9rem">
+          <i class="bi bi-gear-fill" style="color:var(--blue)"></i> SMTP 설정
+        </div>
+        <label class="form-label fw-semibold" style="font-size:0.78rem">SMTP 서버</label>
+        <input type="text" class="form-control form-control-sm mb-2" id="smtp-srv" value="smtp.samsung.com">
+        <label class="form-label fw-semibold" style="font-size:0.78rem">포트</label>
+        <input type="number" class="form-control form-control-sm mb-2" id="smtp-port" value="587">
+        <label class="form-label fw-semibold" style="font-size:0.78rem">발신자 이메일</label>
+        <input type="email" class="form-control form-control-sm mb-2" id="smtp-from" placeholder="nurse@samsung.com">
+        <label class="form-label fw-semibold" style="font-size:0.78rem">비밀번호</label>
+        <input type="password" class="form-control form-control-sm mb-3" id="smtp-pw" placeholder="••••••••">
+
+        <button class="btn w-100 fw-bold py-2" id="sendBtn"
+                style="background:var(--blue);color:white;border-radius:8px;font-size:0.88rem"
+                onclick="doSend()">
+          <i class="bi bi-send-fill me-2"></i>전체 메일 발송
+        </button>
+
+        <!-- Progress -->
+        <div id="progWrap" class="d-none mt-3">
+          <div class="progress" style="height:7px;border-radius:4px">
+            <div class="progress-bar" id="progBar"
+                 style="background:var(--blue);width:0%;transition:width 0.4s"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted" id="progTxt">0 / 0</small>
+            <small id="progOk" class="text-success fw-bold"></small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result list -->
+    <div class="col-lg-8 col-xl-9">
+      <div class="panel" style="max-height:560px;overflow-y:auto">
+        <div class="fw-bold mb-3 d-flex align-items-center gap-2" style="font-size:0.9rem">
+          <i class="bi bi-list-check" style="color:var(--blue)"></i>
+          발송 대상 목록
+        </div>
+        <div id="sendList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ Email Preview Modal ════ -->
+<div class="modal fade" id="mailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header py-2 px-4" style="background:var(--blue)">
+        <span class="text-white fw-bold" style="font-size:0.9rem">
+          <i class="bi bi-envelope-open me-2"></i>메일 미리보기
+        </span>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-1 d-flex align-items-start gap-2">
+          <span class="badge bg-secondary flex-shrink-0 mt-1">수신</span>
+          <span id="pv-to" class="small fw-bold" style="word-break:break-all"></span>
+        </div>
+        <div class="mb-3 d-flex align-items-start gap-2">
+          <span class="badge bg-secondary flex-shrink-0 mt-1">제목</span>
+          <span id="pv-sub" class="small fw-bold"></span>
+        </div>
+        <div class="email-pre" id="pv-body"></div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+// ── State ────────────────────────────────────────────────────────
+let allTcg = [];
+let curFile = null;
+
+// ── File Drag & Drop ──────────────────────────────────────────────
+function ev(e, type) {
+  e.preventDefault();
+  const z = document.getElementById('dropZone');
+  if (type === 'over')  z.classList.add('over');
+  if (type === 'leave') z.classList.remove('over');
+  if (type === 'drop')  { z.classList.remove('over'); setFile(e.dataTransfer.files[0]); }
+}
+function picked(el) { if (el.files[0]) setFile(el.files[0]); }
+function setFile(f) {
+  curFile = f;
+  document.getElementById('fName').textContent = f.name;
+  document.getElementById('fSize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileReady').classList.remove('d-none');
+}
+
+// ── Classify ──────────────────────────────────────────────────────
+async function doClassify() {
+  if (!curFile) return;
+  document.getElementById('fileReady').classList.add('d-none');
+  document.getElementById('loading').classList.remove('d-none');
+
+  const form = new FormData();
+  form.append('file', curFile);
+  try {
+    const res  = await fetch('/api/classify', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) { alert('오류: ' + data.error); return; }
+    allTcg = data.list;
+    renderResults(data);
+  } catch (e) {
+    alert('서버 오류: ' + e.message);
+  } finally {
+    document.getElementById('loading').classList.add('d-none');
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('s-total').textContent = data.total.toLocaleString();
+  document.getElementById('s-tcg').textContent   = data.tcg_count;
+  document.getElementById('s-g1').textContent    = data.group_counts['뇌심최고위험군'] || 0;
+  document.getElementById('s-g2').textContent    = data.group_counts['중증고혈압']     || 0;
+  document.getElementById('s-g3').textContent    = data.group_counts['중증비만']       || 0;
+  document.getElementById('s-g4').textContent    = data.group_counts['복합유소견']     || 0;
+  document.getElementById('resultSub').textContent =
+    `총 ${data.total.toLocaleString()}명 분석 완료 · TCG ${data.tcg_count}명 선별`;
+
+  renderTable(allTcg);
+  setActiveFilter('all');
+  goStep(2);
+}
+
+// ── Table ────────────────────────────────────────────────────────
+const BADGE = {
+  '뇌심최고위험군': '<span class="gb gb-1 me-1">① 뇌심</span>',
+  '중증고혈압':     '<span class="gb gb-2 me-1">② 고혈압</span>',
+  '중증비만':       '<span class="gb gb-3 me-1">③ 비만</span>',
+  '복합유소견':     '<span class="gb gb-4 me-1">④ 복합</span>',
+};
+
+function renderTable(list) {
+  document.getElementById('filterCount').textContent = list.length + '명';
+  document.getElementById('tbody').innerHTML = list.map((t) => {
+    const idx = allTcg.indexOf(t);
+    const verdict = (t.verdict || '').length > 18 ? t.verdict.slice(0, 18) + '…' : t.verdict;
+    return `<tr>
+      <td class="tcg-td ps-3 text-muted">${allTcg.indexOf(t)+1}</td>
+      <td class="tcg-td fw-bold">${t.name}</td>
+      <td class="tcg-td text-muted" style="font-size:0.78rem">${t.dept}</td>
+      <td class="tcg-td" style="color:var(--blue);font-size:0.78rem">${t.email}</td>
+      <td class="tcg-td">${t.groups.map(g => BADGE[g] || g).join('')}</td>
+      <td class="tcg-td">${t.bp}</td>
+      <td class="tcg-td">${t.glucose}</td>
+      <td class="tcg-td">${t.bmi}</td>
+      <td class="tcg-td text-muted" title="${t.verdict}" style="font-size:0.78rem">${verdict}</td>
+      <td class="tcg-td pe-3">
+        <button class="btn btn-sm" style="font-size:0.72rem;border:1.5px solid var(--blue);color:var(--blue);border-radius:6px;padding:2px 10px"
+                onclick="previewMail(${idx})">
+          <i class="bi bi-eye me-1"></i>미리보기
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Filter ────────────────────────────────────────────────────────
+const FMAP = {
+  'all': { el:'fb-all', bg:'var(--blue)' },
+  '뇌심최고위험군': { el:'fb-g1', bg:'#B91C1C' },
+  '중증고혈압':     { el:'fb-g2', bg:'#B45309' },
+  '중증비만':       { el:'fb-g3', bg:'#15803D' },
+  '복합유소견':     { el:'fb-g4', bg:'#6D28D9' },
+};
+
+function setActiveFilter(key) {
+  Object.entries(FMAP).forEach(([k, v]) => {
+    const el = document.getElementById(v.el);
+    el.style.background = (k === key) ? v.bg : 'transparent';
+    el.style.color = (k === key) ? 'white' : v.bg;
+  });
+}
+
+function doFilter(key, btn) {
+  setActiveFilter(key);
+  const list = key === 'all' ? allTcg : allTcg.filter(t => t.groups.includes(key));
+  renderTable(list);
+}
+
+// ── Email Preview ─────────────────────────────────────────────────
+async function previewMail(idx) {
+  const t = allTcg[idx];
+  if (!t) return;
+  try {
+    const res  = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: t.data, groups: t.groups }),
+    });
+    const d = await res.json();
+    document.getElementById('pv-to').textContent  = t.email;
+    document.getElementById('pv-sub').textContent = d.subject;
+    document.getElementById('pv-body').textContent = d.body;
+    new bootstrap.Modal(document.getElementById('mailModal')).show();
+  } catch (e) { alert('미리보기 오류: ' + e.message); }
+}
+
+// ── Send ──────────────────────────────────────────────────────────
+async function doSend() {
+  const smtp = {
+    server:   document.getElementById('smtp-srv').value.trim(),
+    port:     parseInt(document.getElementById('smtp-port').value) || 587,
+    use_tls:  true,
+    sender:   document.getElementById('smtp-from').value.trim(),
+    password: document.getElementById('smtp-pw').value,
+  };
+  if (!smtp.sender || !smtp.password) {
+    alert('발신자 이메일과 비밀번호를 입력하세요.'); return;
+  }
+  if (!confirm(`TCG 대상자 ${allTcg.length}명에게 메일을 발송하시겠습니까?`)) return;
+
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('progWrap').classList.remove('d-none');
+  const bar = document.getElementById('progBar');
+  const txt = document.getElementById('progTxt');
+
+  // Init list
+  document.getElementById('sendList').innerHTML = allTcg.map((t, i) => `
+    <div class="sri" id="sri-${i}">
+      <i class="bi bi-hourglass text-muted" style="font-size:0.9rem"></i>
+      <span class="fw-bold">${t.name}</span>
+      <span class="text-muted" style="font-size:0.78rem">${t.dept}</span>
+      <span class="ms-auto text-muted" style="font-size:0.78rem">대기 중</span>
+    </div>`).join('');
+
+  try {
+    const res  = await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targets: allTcg, smtp }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('발송 오류: ' + data.error); return; }
+
+    let ok = 0;
+    data.results.forEach((r, i) => {
+      const el = document.getElementById(`sri-${i}`);
+      if (!el) return;
+      if (r.ok) {
+        ok++;
+        el.innerHTML = `<i class="bi bi-check-circle-fill text-success" style="font-size:0.9rem"></i>
+          <span class="fw-bold">${r.name}</span>
+          <span class="text-muted" style="font-size:0.78rem">${r.email}</span>
+          <span class="ms-auto text-success fw-bold" style="font-size:0.78rem">발송 완료</span>`;
+      } else {
+        el.innerHTML = `<i class="bi bi-x-circle-fill text-danger" style="font-size:0.9rem"></i>
+          <span class="fw-bold">${r.name}</span>
+          <span class="text-muted" style="font-size:0.78rem">${r.email}</span>
+          <span class="ms-auto text-danger" style="font-size:0.78rem">실패: ${r.error || ''}</span>`;
+      }
+    });
+
+    bar.style.width = '100%';
+    txt.textContent = `${data.results.length} / ${data.results.length} 완료`;
+    document.getElementById('progOk').textContent = `✓ 성공 ${ok}건`;
+  } catch (e) {
+    alert('서버 오류: ' + e.message);
+  } finally {
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────
+function goStep(n) {
+  document.getElementById('sec-upload').classList.toggle('d-none',  n !== 1);
+  document.getElementById('sec-results').classList.toggle('d-none', n !== 2);
+  document.getElementById('sec-send').classList.toggle('d-none',    n !== 3);
+
+  // Steps indicator
+  ['sp1','sp2','sp3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    if (i + 1 < n)      el.classList.add('done');
+    else if (i + 1 === n) el.classList.add('active');
+  });
+  ['sl1','sl2'].forEach((id, i) => {
+    document.getElementById(id).classList.toggle('done', i + 1 < n);
+  });
+
+  if (n === 3) {
+    document.getElementById('sendSub').textContent =
+      `TCG ${allTcg.length}명에게 개인별 맞춤 메일 발송`;
+    document.getElementById('sendList').innerHTML = allTcg.map((t, i) => `
+      <div class="sri" id="sri-${i}">
+        <i class="bi bi-envelope text-muted" style="font-size:0.9rem"></i>
+        <span class="fw-bold">${t.name}</span>
+        <span class="text-muted" style="font-size:0.78rem">${t.dept}</span>
+        <span class="ms-auto" style="font-size:0.78rem">${t.groups.map(g=>g).join(' / ')}</span>
+      </div>`).join('');
+  }
+
+  // Init filter on step 2
+  if (n === 2) setActiveFilter('all');
+}
+
+// Load SMTP from localStorage
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('smtpFrom');
+  if (saved) document.getElementById('smtp-from').value = saved;
+});
+document.getElementById('smtp-from').addEventListener('change', function() {
+  localStorage.setItem('smtpFrom', this.value);
+});
+</script>
+</body>
+</html>
