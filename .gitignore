@@ -1,0 +1,6 @@
+# Local Netlify folder
+.netlify
+
+# Pip-installed packages bundled during Netlify build (not committed)
+netlify/functions/**
+!netlify/functions/app.py

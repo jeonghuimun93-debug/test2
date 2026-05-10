@@ -1,0 +1,15 @@
+[build]
+command = "python3 -m pip install -r requirements.txt -t netlify/functions && cp web_app.py netlify/functions/"
+functions = "netlify/functions"
+
+[functions]
+directory = "netlify/functions"
+included_files = ["templates/**"]
+
+[functions."app"]
+runtime = "python3.11"
+
+[[redirects]]
+from = "/*"
+to = "/.netlify/functions/app/:splat"
+status = 200
