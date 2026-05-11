@@ -1,15 +1,7 @@
 [build]
-command = "python3 -m pip install -r requirements.txt -t functions && cp web_app.py functions/ && mkdir -p functions/app"
-functions = "functions"
-
-[functions]
-directory = "functions"
-included_files = ["templates/**"]
-
-[functions."app"]
-runtime = "python3.11"
+publish = "."
 
 [[redirects]]
 from = "/*"
-to = "/.netlify/functions/app/:splat"
+to = "/index.html"
 status = 200
