@@ -1,9 +1,9 @@
 [build]
-command = "python3 -m pip install -r requirements.txt -t netlify/functions && cp web_app.py netlify/functions/"
-functions = "netlify/functions"
+command = "python3 -m pip install -r requirements.txt -t functions && cp web_app.py functions/ && mkdir -p functions/app"
+functions = "functions"
 
 [functions]
-directory = "netlify/functions"
+directory = "functions"
 included_files = ["templates/**"]
 
 [functions."app"]
