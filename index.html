@@ -26,6 +26,8 @@ body{ background:var(--bg); color:var(--ink); font-family:'Apple SD Gothic Neo',
 #maskBtn{ display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.4); border-radius:8px; padding:5px 12px; font-size:0.78rem; font-weight:600; cursor:pointer; transition:.15s; white-space:nowrap; }
 #maskBtn:hover{ background:rgba(255,255,255,0.26); }
 #maskBtn.on{ background:#fff; color:var(--brand); border-color:#fff; }
+#libBtn{ display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.14); color:#fff; border:1px solid rgba(255,255,255,0.4); border-radius:8px; padding:5px 12px; font-size:0.78rem; font-weight:600; cursor:pointer; transition:.15s; white-space:nowrap; }
+#libBtn:hover{ background:rgba(255,255,255,0.26); }
 
 /* Steps */
 .steps-bar{ background:#fff; padding:13px 28px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line); }
@@ -134,6 +136,7 @@ body{ background:var(--bg); color:var(--ink); font-family:'Apple SD Gothic Neo',
     <span class="top-title">R&D센터 부속의원 &nbsp;|&nbsp; 건강검진 사후관리 자동 분류 시스템</span>
   </div>
   <div class="d-flex align-items-center gap-2">
+    <button id="libBtn" onclick="openLibrary()"><i class="bi bi-archive"></i><span>저장된 분류</span></button>
     <button id="maskBtn" onclick="toggleMask()"><i class="bi bi-eye-fill"></i><span id="maskBtnTxt">이름 표시</span></button>
     <div id="debugMount"></div>
   </div>
@@ -205,6 +208,7 @@ body{ background:var(--bg); color:var(--ink); font-family:'Apple SD Gothic Neo',
     <div class="d-flex gap-2 flex-wrap">
       <button class="btn-ghost" onclick="toggleSettings()"><i class="bi bi-sliders me-1"></i>기준 설정</button>
       <button class="btn-ghost" onclick="openReport()"><i class="bi bi-file-earmark-bar-graph me-1"></i>집계 리포트</button>
+      <button class="btn-ghost" onclick="saveCurrent()"><i class="bi bi-save me-1"></i>결과 저장</button>
       <button class="btn-ghost" onclick="goStep(1)"><i class="bi bi-arrow-left me-1"></i>다시 업로드</button>
       <button id="mailSendNavBtn" class="btn btn-sm fw-bold px-3" style="background:var(--brand);color:white;border-radius:8px;font-size:0.78rem" onclick="goStep(3)">
         <i class="bi bi-send-fill me-1"></i>메일 발송하기
@@ -463,6 +467,19 @@ body{ background:var(--bg); color:var(--ink); font-family:'Apple SD Gothic Neo',
   </div>
 </div>
 
+<!-- 저장된 분류 Modal -->
+<div class="modal fade" id="libModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header py-2 px-4" style="background:var(--brand)">
+        <span class="text-white fw-bold" style="font-size:0.9rem"><i class="bi bi-archive me-2"></i>저장된 분류 <span class="fw-normal" style="opacity:0.85">· 이 브라우저에만 보관 · 외부 전송 없음</span></span>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 pt-2" id="libBody"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script id="appScript">
@@ -677,9 +694,32 @@ function followupClass(f) {
   return '정상';
 }
 
+// 정규화된 행 1건 → 화면/메일에서 쓰는 분류 객체. 업로드 분류와 저장본 복원이 같은 로직을 쓴다.
+function buildPerson(row) {
+  const findings = getFindings(row);
+  const knox = String(row['Knox ID'] || row['사번'] || '').trim();
+  return {
+    name:    sv(row,'성명'),
+    dept:    sv(row,'부서'),
+    age:     parseInt(row['연령'] || 0) || 0,
+    gender:  sv(row,'성별'),
+    knox,
+    email:   knox ? knox + '@samsung.com' : '-',
+    followup: followupClass(findings),
+    findings,
+    groups:  classify(row),   // TCG 고위험 하위 분류
+    bp:      sv(row,'혈압'),
+    glucose: sv(row,'식전 혈당'),
+    bmi:     sv(row,'체질량 지수'),
+    verdict: sv(row,'판정 합'),
+    data:    row,
+  };
+}
+
 // ── State ─────────────────────────────────────────────────────────
 let allPeople = [];   // 전체 검진자(정상 포함)
 let curFile = null;
+let curMeta = { fileName: '' };   // 현재 화면에 올라온 분류의 출처(파일명 등)
 let currentFilter = 'target';
 let currentCohortDim = 'dept';
 let maskMode = false; // 발표·화면공유용 이름/사번 마스킹
@@ -789,31 +829,8 @@ function doClassify() {
       const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
 
-      const people = [];
-      for (const rawRow of rows) {
-        const row      = normalizeRow(rawRow);
-        const findings = getFindings(row);
-        const followup = followupClass(findings);
-        const groups   = classify(row);   // TCG 고위험 하위 분류
-        // Knox ID가 있으면 그것으로, 없으면 사번으로 메일주소 생성(placeholder)
-        const knox = String(row['Knox ID'] || row['사번'] || '').trim();
-        people.push({
-          name:    sv(row,'성명'),
-          dept:    sv(row,'부서'),
-          age:     parseInt(row['연령'] || 0) || 0,
-          gender:  sv(row,'성별'),
-          knox,
-          email:   knox ? knox + '@samsung.com' : '-',
-          followup, findings, groups,
-          bp:      sv(row,'혈압'),
-          glucose: sv(row,'식전 혈당'),
-          bmi:     sv(row,'체질량 지수'),
-          verdict: sv(row,'판정 합'),
-          data:    row,
-        });
-      }
-
-      allPeople = people;
+      allPeople = rows.map(r => buildPerson(normalizeRow(r)));
+      curMeta.fileName = curFile ? curFile.name : '';
       renderResults();
     } catch(err) {
       alert('파일 읽기 오류: ' + err.message);
@@ -849,7 +866,7 @@ function setKpis(c) {
   setText('k-g3', c['중증비만']);
   setText('k-g4', c['복합유소견']);
   setText('resultSub',
-    `총 ${allPeople.length.toLocaleString()}명 검진 · 사후관리 대상 ${c.face + c.edu}명 (대면진료 ${c.face} · 보건교육 ${c.edu}) · TCG 고위험 ${c.tcg}명`);
+    `${curMeta.fileName ? curMeta.fileName + ' · ' : ''}총 ${allPeople.length.toLocaleString()}명 검진 · 사후관리 대상 ${c.face + c.edu}명 (대면진료 ${c.face} · 보건교육 ${c.edu}) · TCG 고위험 ${c.tcg}명`);
 }
 
 function renderResults() {
@@ -861,6 +878,7 @@ function renderResults() {
   doFilter('target');
   updateStatusSummary();
   syncThresholdInputs();
+  saveLast();   // 마지막 분류 자동 저장 (페이지 다시 열면 복원)
 }
 
 // 임계값 변경 후 재분류 (What-if) — 파일 다시 안 읽고 메모리에서 재계산
@@ -874,6 +892,7 @@ function applyThresholds() {
   setKpis(counts());
   renderCohort(currentCohortDim);
   doFilter(currentFilter);
+  saveLast();   // 변경된 기준 반영본도 자동 저장
 }
 function resetThresholds() {
   THRESHOLDS.sbp = 160; THRESHOLDS.dbp = 100; THRESHOLDS.bmi = 35; THRESHOLDS.complexN = 3;
@@ -889,6 +908,98 @@ function syncThresholdInputs() {
 }
 function toggleSettings() {
   document.getElementById('settingsPanel').classList.toggle('d-none');
+}
+
+// ── 분류 결과 저장 / 불러오기 (앱 내 보관 · localStorage · 외부 전송 없음) ──
+// 마지막 분류는 자동 복원되고, "결과 저장"으로 이름 붙인 스냅샷은
+// "저장된 분류"에서 언제든 다시 불러올 수 있다. (혼자 분류 작업용)
+const LIB_KEY  = 'savedClassifications';   // 이름 붙여 저장한 분류 목록
+const LAST_KEY = 'lastClassification';     // 마지막 화면 자동 복원용
+
+function loadJSON(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } }
+function loadLib() { return loadJSON(LIB_KEY) || []; }
+function persistLib(lib) {
+  try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); return true; }
+  catch(e) { alert('브라우저 저장 공간이 부족합니다.\n"저장된 분류"에서 오래된 항목을 삭제한 뒤 다시 시도하세요.'); return false; }
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// 저장 용량 절감: 원본 행(data)만 보관하고 불러올 때 분류를 재구성한다.
+function snapshotRows() { return allPeople.map(p => p.data); }
+function rebuildFrom(rows, thresholds) {
+  if (thresholds) Object.assign(THRESHOLDS, thresholds);
+  allPeople = (rows || []).map(buildPerson);
+}
+
+// 마지막 분류 자동 저장 (실패는 조용히 무시 — 용량 초과 등)
+function saveLast() {
+  try {
+    localStorage.setItem(LAST_KEY, JSON.stringify({
+      fileName: curMeta.fileName, thresholds: { ...THRESHOLDS },
+      rows: snapshotRows(), savedAt: Date.now(),
+    }));
+  } catch(e) { /* noop */ }
+}
+
+// 현재 결과를 이름 붙여 보관
+function saveCurrent() {
+  if (!allPeople.length) { alert('먼저 데이터를 분류하세요.'); return; }
+  const base = (curMeta.fileName || '분류').replace(/\.(xlsx|xls)$/i, '');
+  const def  = base + ' · ' + new Date().toLocaleString('ko-KR', { dateStyle:'medium', timeStyle:'short' });
+  const label = prompt('저장할 분류 이름을 입력하세요.', def);
+  if (label === null) return;
+  const c = counts();
+  const lib = loadLib();
+  lib.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    label: label.trim() || def,
+    savedAt: new Date().toISOString(),
+    fileName: curMeta.fileName || '',
+    thresholds: { ...THRESHOLDS },
+    total: allPeople.length, face: c.face, edu: c.edu, tcg: c.tcg,
+    rows: snapshotRows(),
+  });
+  if (persistLib(lib)) alert('분류가 저장되었습니다.\n상단 "저장된 분류"에서 언제든 다시 불러올 수 있습니다.');
+}
+
+// 저장 목록 모달 열기
+function openLibrary() {
+  const lib = loadLib();
+  const body = document.getElementById('libBody');
+  if (!lib.length) {
+    body.innerHTML = '<div class="text-center text-secondary py-5"><i class="bi bi-inbox d-block mb-2" style="font-size:2rem"></i>저장된 분류가 없습니다.<div class="mt-1" style="font-size:0.8rem">분류 결과 화면에서 <b>결과 저장</b>을 누르면 여기에 보관됩니다.</div></div>';
+  } else {
+    body.innerHTML = lib.map(s => {
+      const when = new Date(s.savedAt).toLocaleString('ko-KR', { dateStyle:'medium', timeStyle:'short' });
+      return `<div class="d-flex align-items-center gap-3 py-3" style="border-bottom:1px solid var(--line)">
+        <div class="flex-grow-1" style="min-width:0">
+          <div class="fw-bold text-truncate" style="font-size:0.9rem">${escapeHtml(s.label)}</div>
+          <div class="text-secondary" style="font-size:0.76rem">${when} · 전체 ${s.total||0}명 · 대면 ${s.face||0} · 보건 ${s.edu||0} · TCG ${s.tcg||0}</div>
+        </div>
+        <button class="btn btn-sm fw-bold px-3 flex-shrink-0" style="background:var(--brand);color:#fff;border-radius:8px;font-size:0.78rem" onclick="loadSaved('${s.id}')"><i class="bi bi-box-arrow-up me-1"></i>불러오기</button>
+        <button class="btn-ghost flex-shrink-0" onclick="deleteSaved('${s.id}')" title="삭제"><i class="bi bi-trash"></i></button>
+      </div>`;
+    }).join('');
+  }
+  new bootstrap.Modal(document.getElementById('libModal')).show();
+}
+
+// 저장본 불러오기 → 결과 화면 복원
+function loadSaved(id) {
+  const snap = loadLib().find(s => s.id === id);
+  if (!snap) { alert('저장된 분류를 찾을 수 없습니다.'); return; }
+  rebuildFrom(snap.rows, snap.thresholds);
+  curMeta.fileName = snap.fileName || '';
+  bootstrap.Modal.getInstance(document.getElementById('libModal'))?.hide();
+  renderResults();
+}
+
+function deleteSaved(id) {
+  if (!confirm('이 저장된 분류를 삭제하시겠습니까?')) return;
+  persistLib(loadLib().filter(s => s.id !== id));
+  openLibrary();
 }
 
 // ── 데이터 품질 검증 ──────────────────────────────────────────────
@@ -1171,6 +1282,13 @@ window.addEventListener('DOMContentLoaded', () => {
   if (saved) document.getElementById('smtp-from').value = saved;
   maskMode = localStorage.getItem('maskMode') === '1';
   updateMaskBtn();
+  // 마지막 분류 자동 복원 — 페이지를 닫았다 다시 열어도 그대로
+  const last = loadJSON(LAST_KEY);
+  if (last && last.rows && last.rows.length) {
+    rebuildFrom(last.rows, last.thresholds);
+    curMeta.fileName = last.fileName || '';
+    renderResults();
+  }
 });
 document.getElementById('smtp-from').addEventListener('change', function() {
   localStorage.setItem('smtpFrom', this.value);
